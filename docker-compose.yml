@@ -1,0 +1,82 @@
+#
+# COMO USAR:
+#
+# docker-compose up -d
+#
+# KONG MANAGER: http://localhost:8002
+#
+# Importante:
+# - Se usar licença irá rodar em free mode, onde não existe o Dev Portal, RBAC etc.
+#
+version: "2"
+
+services:
+  db:
+    image: postgres:16.1
+    environment:
+      - POSTGRES_DB=kong
+      - POSTGRES_USER=kong
+      - POSTGRES_PASSWORD=kong
+    volumes:
+      - kongdb:/var/lib/postgresql
+
+  kong:
+    image: kong:3.6
+    volumes:
+      - ./rinha:/usr/local/share/lua/5.1/kong/plugins/rinha
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: db
+      KONG_PG_DATABASE: kong
+      KONG_PG_USER: kong
+      KONG_PG_PASSWORD: kong
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      KONG_ADMIN_GUI_URL: http://localhost:8002
+      KONG_ADMIN_GUI_API_URL: http://localhost:8001
+      KONG_LOG_LEVEL: info
+      # KONG PLUGINS
+      KONG_PLUGINS: "bundled,rinha"
+    ports:
+      - 8000:8000
+      - 8443:8443
+      - 8001:8001
+      - 8444:8444
+      - 8002:8002
+      - 8445:8445
+      - 8003:8003
+      - 8004:8004
+    depends_on:
+      kong-init:
+        condition: service_completed_successfully
+
+  plugin-loader:
+    image: curlimages/curl:latest
+    network_mode: service:kong
+    volumes:
+      - ./scripts:/opt/scripts
+    depends_on:
+      kong:
+        condition: service_healthy
+    command: /bin/sh -c "/opt/scripts/add.sh"
+
+  kong-init:
+    image: kong:3.6
+    depends_on:
+      db:
+        condition: service_started
+    restart: on-failure
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: db
+      KONG_PG_PASSWORD: kong
+      KONG_PASSWORD: kong
+      KONG_PG_DATABASE: kong
+      KONG_LOG_LEVEL: debug
+    #      KONG_PLUGINS: "bundled,kong-oidc"
+    command: kong migrations bootstrap
+volumes:
+  kongdb:
