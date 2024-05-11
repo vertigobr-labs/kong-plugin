@@ -8,7 +8,7 @@
 # Importante:
 # - Se usar licença irá rodar em free mode, onde não existe o Dev Portal, RBAC etc.
 #
-version: "2"
+#version: "2"
 
 services:
   db:
@@ -21,6 +21,7 @@ services:
       - kongdb:/var/lib/postgresql
 
   kong:
+    #image: kong/kong-gateway:3.6
     image: kong:3.6
     volumes:
       - ./rinha:/usr/local/share/lua/5.1/kong/plugins/rinha
@@ -64,6 +65,7 @@ services:
     command: /bin/sh -c "/opt/scripts/add.sh"
 
   kong-init:
+    #image: kong/kong-gateway:3.6
     image: kong:3.6
     depends_on:
       db:
